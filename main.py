@@ -13,12 +13,38 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import redis
 
 load_dotenv(".env")
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_FILE = BASE_DIR / "users.json"
 HTML_FILE = BASE_DIR / "index.html"
+
+# ── Upstash Redis Configuration ──
+# Option 1: Full URL: rediss://default:PASSWORD@HOST:PORT
+# Option 2: Individual env vars
+REDIS_URL = os.environ.get("REDIS_URL", "")
+REDIS_HOST = os.environ.get("UPSTASH_REDIS_HOST", os.environ.get("REDIS_HOST", ""))
+REDIS_PORT = int(os.environ.get("UPSTASH_REDIS_PORT", os.environ.get("REDIS_PORT", "6379")))
+REDIS_PASSWORD = os.environ.get("UPSTASH_REDIS_PASSWORD", os.environ.get("REDIS_PASSWORD", ""))
+REDIS_USERS_KEY = os.environ.get("REDIS_USERS_KEY", "studyflow:users")
+
+if REDIS_URL:
+    # Parse rediss://default:pass@host:port
+    r = redis.from_url(REDIS_URL, decode_responses=True)
+elif REDIS_HOST and REDIS_PASSWORD:
+    r = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        ssl=True,
+        decode_responses=True,
+    )
+else:
+    r = None
+
+REDIS_ENABLED = r is not None
+print(f"[Config] Redis: {'CONNECTED' if REDIS_ENABLED else 'NOT CONFIGURED'}")
 
 # ── Groq Configuration ──
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
@@ -58,17 +84,61 @@ class ModuleCompleteRequest(BaseModel):
     module_title: str
 
 
+# ── Redis Persistence ──
+
 def load_users() -> dict:
-    if DATA_FILE.exists():
-        try:
-            return json.loads(DATA_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            return {}
-    return {}
+    """Load all users from Upstash Redis hash."""
+    if not REDIS_ENABLED:
+        return {}
+    try:
+        raw = r.hgetall(REDIS_USERS_KEY)
+        return {k: json.loads(v) for k, v in raw.items()}
+    except Exception as e:
+        print(f"[Redis Error] load_users: {e}")
+        return {}
 
 
 def save_users(data: dict) -> None:
-    DATA_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    """Overwrite entire users hash in Redis."""
+    if not REDIS_ENABLED:
+        return
+    try:
+        # Clear existing and repopulate
+        r.delete(REDIS_USERS_KEY)
+        if data:
+            pipe = r.pipeline()
+            for user_id, user_data in data.items():
+                pipe.hset(REDIS_USERS_KEY, user_id, json.dumps(user_data))
+            pipe.execute()
+    except Exception as e:
+        print(f"[Redis Error] save_users: {e}")
+
+
+def get_user(user_id: str) -> dict:
+    """Fetch a single user from Redis."""
+    if not REDIS_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not configured.")
+    try:
+        raw = r.hget(REDIS_USERS_KEY, user_id)
+        if not raw:
+            raise HTTPException(status_code=404, detail="User not found")
+        return json.loads(raw)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Redis Error] get_user: {e}")
+        raise HTTPException(status_code=500, detail="Database error.")
+
+
+def save_user(user_id: str, user_data: dict) -> None:
+    """Save a single user to Redis."""
+    if not REDIS_ENABLED:
+        raise HTTPException(status_code=503, detail="Database not configured.")
+    try:
+        r.hset(REDIS_USERS_KEY, user_id, json.dumps(user_data))
+    except Exception as e:
+        print(f"[Redis Error] save_user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to save user.")
 
 
 # ── AI Client ──
@@ -172,7 +242,7 @@ def get_ai_suggestions(user: dict) -> list[str]:
     system_msg = (
         "You are a course recommendation engine. "
         "Output ONLY a JSON array of 5 strings. No thinking, no reasoning, no explanations, no markdown. "
-        "Example: [\"Quantum Computing\", \"Behavioral Economics\", \"Creative Writing\", \"Cloud Architecture\", \"Molecular Gastronomy\"]"
+        'Example: ["Quantum Computing", "Behavioral Economics", "Creative Writing", "Cloud Architecture", "Molecular Gastronomy"]'
     )
 
     user_msg = f"""Suggest exactly 5 new, diverse course topics.
@@ -235,7 +305,7 @@ def build_course(topic: str, interests: list[str]) -> dict:
         "Your entire response must be a single parseable JSON object."
     )
 
-    user_msg = f"""Create a 8-9 module beginner course on "{topic_title}" for a learner interested in: {interests_str}.
+    user_msg = f"""Create a 6-7 module beginner course on "{topic_title}" for a learner interested in: {interests_str}.
 
 Output ONLY a JSON object with this exact structure. No text before or after:
 
@@ -274,10 +344,8 @@ Module plan:
 3. Applying in Practice: Realistic scenario with hands-on exercise.
 4. Synthesis: Connect concepts, build knowledge system, suggest next steps.
 
-NOTE: only mix in relevant concepts from the user's interests if they naturally align with the topic. Avoid forcing unrelated topics.
-
 Rules:
-- article.content: 400-500 words of HTML using only h4, p, ol, li, strong tags.
+- article.content: 500-600 words of HTML using only h4, p, ol, li, strong tags.
 - Sources: real, verifiable educational URLs (Wikipedia, Khan Academy, Coursera, edX, MIT, Stanford, etc.).
 - Style: clear, engaging, practical — like a well-written Medium article.
 - JSON: valid, double quotes only, no trailing commas, no markdown."""
@@ -360,20 +428,6 @@ Rules:
     ])
 
     return data
-
-
-def get_user(user_id: str) -> dict:
-    users = load_users()
-    user = users.get(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-def save_user(user_id: str, user_data: dict) -> None:
-    users = load_users()
-    users[user_id] = user_data
-    save_users(users)
 
 
 def make_user_payload(name: str, username: str, interests: list[str]) -> dict:
