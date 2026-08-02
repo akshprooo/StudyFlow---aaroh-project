@@ -34,9 +34,6 @@
       line-height: 1.5;
       -webkit-font-smoothing: antialiased;
       font-size: 14px;
-      /* display: flex; */
-      /* flex-direction: column; */
-      /* justify-content: start; */
     }
 
     /* ── Loading ── */
@@ -132,12 +129,12 @@
     .sidebar {
       border-right: 1px solid var(--border);
       height: 100vh;
-      left: 0;
+      position: sticky; left: 0; top: 0;
       display: flex; flex-direction: column;
       padding: 16px;
       background: var(--surface);
-      /* background-color: red; */
-      position: sticky; top: 0;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 40;
     }
 
     /* Profile header */
@@ -495,6 +492,60 @@
     }
     .reader-actions .btn { width: auto; }
 
+    /* ── Mobile Sidebar Drawer ── */
+    .mobile-header {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 35;
+    }
+    .mobile-header-title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .menu-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      transition: var(--transition);
+    }
+    .menu-toggle:hover {
+      background: var(--hover);
+    }
+    .menu-toggle svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+    }
+    .sidebar-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(2px);
+      z-index: 39;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .sidebar-backdrop.show {
+      display: block;
+      opacity: 1;
+    }
+
     /* ── Toast ── */
     .toast {
       position: fixed; bottom: 20px; right: 20px;
@@ -508,13 +559,46 @@
 
     /* ── Responsive ── */
     @media (max-width: 900px) {
-      .app-shell { grid-template-columns: 1fr; }
-      .sidebar { border-right: none; border-bottom: 1px solid var(--border); position: none;}
+      .app-shell {
+        display: flex;
+        flex-direction: column;
+        max-width: 100%;
+      }
+      .mobile-header {
+        display: flex;
+      }
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        height: 100vh;
+        border-right: 1px solid var(--border);
+        border-bottom: none;
+        transform: translateX(-100%);
+        box-shadow: 4px 0 24px rgba(0,0,0,0.08);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .main-content {
+        padding: 20px 16px;
+      }
       .hero-grid, .content-grid { grid-template-columns: 1fr; }
       .auth-card { padding: 32px 24px; }
       .reader-title { font-size: 24px; }
       .reader-summary { font-size: 15px; }
       .article-body { font-size: 14px; }
+    }
+
+    @media (min-width: 901px) {
+      .sidebar-backdrop {
+        display: none !important;
+      }
+      .sidebar {
+        transform: translateX(0) !important;
+      }
     }
   </style>
 <base target="_blank">
@@ -550,8 +634,18 @@
 
   <!-- App Dashboard -->
   <div id="app-view" style="display: none;">
+    <!-- Mobile Header -->
+    <div class="mobile-header" id="mobile-header">
+      <span class="mobile-header-title" id="mobile-title">Study Flow</span>
+      <button class="menu-toggle" onclick="toggleSidebar()" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
     <div class="app-shell">
-      <aside class="sidebar">
+      <aside class="sidebar" id="sidebar">
         <!-- Profile Header -->
         <div class="sidebar-profile">
           <div class="sidebar-profile-left">
@@ -698,6 +792,32 @@
       showToast('Logged out.');
     }
 
+    /* ── Responsive Sidebar ── */
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      const isOpen = sidebar.classList.contains('open');
+      if (isOpen) {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('show');
+        document.body.style.overflow = '';
+      } else {
+        sidebar.classList.add('open');
+        backdrop.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeSidebarOnMobile() {
+      if (window.innerWidth <= 900) {
+        const sidebar = document.getElementById('sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+    }
+
     async function createAccount(event) {
       event.preventDefault();
       const name = document.getElementById('name').value.trim();
@@ -766,6 +886,9 @@
       document.getElementById('profile-name').textContent = user.username;
       document.getElementById('profile-avatar').textContent = (user.name || user.username).charAt(0).toUpperCase();
 
+      // Mobile title
+      document.getElementById('mobile-title').textContent = state.selectedCourse ? state.selectedCourse.course_title : 'Study Flow';
+
       document.getElementById('streak').textContent = user.daily_streak || 0;
       document.getElementById('course-count').textContent = (user.courses || []).length;
       document.getElementById('module-count').textContent = (user.completed_modules || []).length;
@@ -817,6 +940,7 @@
         el.addEventListener('click', () => {
           const idx = parseInt(el.dataset.idx);
           selectCourse(user.courses[idx]);
+          closeSidebarOnMobile();
         });
       });
 
