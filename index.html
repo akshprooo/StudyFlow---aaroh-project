@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Study Flow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #ffffff;
+      --surface-2: #f5f5f5;
+      --surface-3: #ebebeb;
+      --text: #000000;
+      --text-secondary: #737373;
+      --text-tertiary: #a3a3a3;
+      --border: #e5e5e5;
+      --border-light: #f0f0f0;
+      --hover: #f0f0f0;
+      --radius: 8px;
+      --radius-lg: 10px;
+      --transition: all 0.15s ease;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Instrument Sans';
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      font-size: 14px;
+      /* display: flex; */
+      /* flex-direction: column; */
+      /* justify-content: start; */
+    }
+
+    /* ── Loading ── */
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(6px);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 12px; z-index: 100;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .loading-overlay.hidden {
+      opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    .loading-spinner {
+      width: 20px; height: 20px;
+      border: 1.5px solid var(--border);
+      border-top-color: var(--text);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      font-size: 13px; color: var(--text-secondary); font-weight: 400;
+    }
+
+    /* ── Auth ── */
+    .auth-container {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      width: 100%; max-width: 400px;
+    }
+    .auth-card h1 {
+      font-size: 24px; font-weight: 600;
+      margin-bottom: 6px; letter-spacing: -0.01em;
+    }
+    .auth-card .subtitle {
+      color: var(--text-secondary); font-size: 14px;
+      margin-bottom: 32px; line-height: 1.5;
+    }
+    .field-group { margin-bottom: 20px; }
+    .field-group label {
+      display: block; font-size: 13px; font-weight: 500;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .field-group input {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--surface); color: var(--text); font-size: 14px;
+      transition: var(--transition); outline: none;
+    }
+    .field-group input:focus { border-color: var(--text); }
+    .field-group input::placeholder { color: var(--text-tertiary); }
+
+    .btn {
+      padding: 10px 16px; border: none; border-radius: var(--radius);
+      background: var(--text); color: #fff;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: var(--transition);
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-secondary {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--hover); opacity: 1; }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+    .btn-ghost {
+      background: transparent; color: var(--text-secondary);
+      border: none; padding: 6px 10px;
+    }
+    .btn-ghost:hover { color: var(--text); background: var(--hover); }
+
+    /* ── App Shell ── */
+    .app-shell {
+      max-width: 1200px; margin: 0 auto; padding: 0;
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 0;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      height: 100vh;
+      position: sticky; left: 0; top: 0;
+      left: 0;
+      display: flex; flex-direction: column;
+      padding: 16px;
+      background: var(--surface);
+      /* background-color: red; */
+    }
+
+    /* Profile header */
+    .sidebar-profile {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .sidebar-profile-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .profile-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 12px; font-weight: 600;
+      flex-shrink: 0;
+    }
+    .profile-name-row {
+      display: flex; align-items: center; gap: 4px;
+      cursor: pointer;
+    }
+    .profile-name-text {
+      font-size: 14px; font-weight: 500; color: var(--text);
+    }
+    .profile-name-row svg {
+      width: 14px; height: 14px; stroke: var(--text-secondary);
+      stroke-width: 2; fill: none;
+    }
+    .sidebar-profile-right {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .sidebar-profile-right svg {
+      width: 18px; height: 18px; stroke: var(--text-secondary);
+      stroke-width: 1.8; fill: none; cursor: pointer;
+      transition: var(--transition);
+    }
+    .sidebar-profile-right svg:hover { stroke: var(--text); }
+
+    /* New Course button */
+    .new-course-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: var(--transition);
+      margin-bottom: 16px;
+      font-size: 14px; font-weight: 500;
+      color: var(--text);
+    }
+    .new-course-btn:hover { background: var(--hover); }
+    .new-course-btn svg {
+      width: 16px; height: 16px; stroke: var(--text);
+      stroke-width: 2; fill: none;
+    }
+
+    /* Section header */
+    .sidebar-section {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 8px;
+      cursor: pointer;
+      padding: 4px 0;
+    }
+    .sidebar-section-title {
+      font-size: 14px; font-weight: 500; color: var(--text);
+    }
+    .sidebar-section svg {
+      width: 14px; height: 14px; stroke: var(--text-secondary);
+      stroke-width: 2; fill: none;
+      transition: transform 0.2s ease;
+    }
+    .sidebar-section.collapsed svg { transform: rotate(-90deg); }
+
+    /* Course list */
+    .course-list { display: flex; flex-direction: column; gap: 4px; }
+    .course-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      background: var(--surface-2);
+      cursor: pointer;
+      transition: var(--transition);
+      font-size: 14px;
+    }
+    .course-item:hover { background: var(--surface-3); }
+    .course-item.active { background: var(--text); color: #fff; }
+    .course-item.active .course-hash { color: rgba(255,255,255,0.5); }
+    .course-item.active .course-dot { opacity: 0.8; }
+    .course-name-row {
+      display: flex; align-items: center; gap: 6px;
+    }
+    .course-hash {
+      color: var(--text-tertiary); font-weight: 400;
+    }
+    .course-title-text {
+      font-weight: 400;
+    }
+    .course-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Sidebar bottom */
+    .sidebar-bottom {
+      margin-top: auto;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-light);
+    }
+    .sidebar-bottom svg {
+      width: 20px; height: 20px; stroke: var(--text-secondary);
+      stroke-width: 1.8; fill: none; cursor: pointer;
+      transition: var(--transition);
+    }
+    .sidebar-bottom svg:hover { stroke: var(--text); }
+
+    /* ── Main Content ── */
+    .main-content {
+      padding: 32px;
+      display: flex; flex-direction: column; gap: 24px;
+      font-family: 'Instrument Sans', sans-serif;
+    }
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 4px;
+    }
+    .page-title {
+      font-size: 22px; font-weight: 600; letter-spacing: -0.01em;
+    }
+
+    .hero-grid {
+      display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px;
+      transition: var(--transition);
+    }
+    .card:hover { border-color: #d4d4d4; }
+    .card-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-tertiary); margin-bottom: 14px;
+    }
+    .hero-course-title {
+      font-size: 20px; font-weight: 600; margin-bottom: 4px;
+    }
+    .hero-course-meta {
+      color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-box {
+      padding: 14px; background: var(--surface-2); border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+    }
+    .stat-value { font-size: 20px; font-weight: 600; display: block; margin-bottom: 2px; }
+    .stat-label { font-size: 11px; color: var(--text-secondary); font-weight: 400; }
+    .progress-container { margin-top: 4px; }
+    .progress-bar-bg {
+      width: 100%; height: 4px; background: var(--border-light);
+      border-radius: 999px; overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; background: var(--text); border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+    .progress-text { font-size: 11px; color: var(--text-secondary); margin-top: 8px; }
+
+    .suggestion-list { display: flex; flex-direction: column; gap: 6px; }
+    .suggestion-item {
+      padding: 12px 14px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--surface);
+      cursor: pointer; transition: var(--transition);
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px; font-weight: 500;
+    }
+    .suggestion-item:hover {
+      border-color: var(--text); background: var(--surface);
+    }
+    .suggestion-item .arrow {
+      color: var(--text-tertiary); font-size: 14px;
+      transition: var(--transition);
+    }
+    .suggestion-item:hover .arrow { color: var(--text); }
+    .suggestion-empty { color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+
+    .content-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 24px; }
+
+    .module-list { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+    .module-item {
+      padding: 14px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: var(--surface);
+      cursor: pointer; transition: var(--transition);
+    }
+    .module-item:hover { border-color: #d4d4d4; }
+    .module-item.active {
+      border-color: var(--text); background: var(--surface);
+    }
+    .module-item.completed { border-color: var(--text); }
+    .module-item.completed .module-status { color: var(--text); }
+    .module-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 3px;
+    }
+    .module-title { font-size: 13px; font-weight: 500; flex: 1; }
+    .module-status {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--text-tertiary);
+      white-space: nowrap; margin-left: 8px;
+    }
+    .module-summary { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+    .lesson-preview { min-height: 360px; }
+    .lesson-empty {
+      text-align: center; padding: 48px 20px; color: var(--text-secondary);
+    }
+    .empty-icon {
+      width: 40px; height: 40px; margin: 0 auto 12px;
+      stroke: var(--text-tertiary); stroke-width: 1.5;
+      fill: none;
+    }
+
+    /* ── FULLSCREEN READER ── */
+    .reader-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 50; overflow-y: auto;
+      transform: translateY(100%);
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    }
+    .reader-overlay.open {
+      transform: translateY(0); opacity: 1;
+    }
+
+    .reader-toolbar {
+      position: sticky; top: 0;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0; z-index: 10;
+    }
+    .reader-toolbar-inner {
+      max-width: 680px; margin: 0 auto;
+      padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .reader-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500; color: var(--text-secondary);
+      cursor: pointer; border: none; background: none; padding: 6px 10px;
+      border-radius: var(--radius); transition: var(--transition);
+    }
+    .reader-back:hover { background: var(--hover); color: var(--text); }
+    .reader-back svg { width: 14px; height: 14px; }
+    .reader-progress-track {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 1px; background: var(--border-light);
+    }
+    .reader-progress-fill {
+      height: 100%; background: var(--text);
+      transition: width 0.1s linear;
+    }
+
+    .reader-body {
+      max-width: 680px; margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .reader-course-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 10px;
+    }
+    .reader-title {
+      font-size: 30px; font-weight: 600;
+      line-height: 1.25; letter-spacing: -0.01em;
+      margin-bottom: 14px;
+    }
+    .reader-summary {
+      font-size: 16px; color: var(--text-secondary);
+      line-height: 1.6; margin-bottom: 40px;
+      padding-bottom: 24px; border-bottom: 1px solid var(--border-light);
+    }
+
+    .article-body {
+      font-size: 15px; line-height: 1.75;
+      color: var(--text-secondary);
+    }
+    .article-body h4 {
+      font-size: 18px; font-weight: 600;
+      margin: 32px 0 12px; color: var(--text);
+    }
+    .article-body p { margin-bottom: 16px; }
+    .article-body ol, .article-body ul {
+      margin: 14px 0 18px 24px;
+    }
+    .article-body li { margin-bottom: 8px; }
+    .article-body strong { color: var(--text); font-weight: 600; }
+    .article-body a {
+      color: var(--text); text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-underline-offset: 3px;
+      transition: var(--transition);
+    }
+    .article-body a:hover { text-decoration-color: var(--text); }
+
+    .reader-keypoints {
+      margin-top: 48px; padding: 24px;
+      background: var(--surface-2); border-radius: var(--radius-lg);
+      border: 1px solid var(--border-light);
+    }
+    .reader-keypoints h4 {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 14px;
+    }
+    .reader-keypoints ul { list-style: none; margin: 0; padding: 0; }
+    .reader-keypoints li {
+      padding: 8px 0 8px 22px; position: relative;
+      font-size: 13px; color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-light);
+    }
+    .reader-keypoints li:last-child { border-bottom: none; }
+    .reader-keypoints li::before {
+      content: ""; position: absolute; left: 0; top: 13px;
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--text);
+    }
+
+    .reader-sources {
+      margin-top: 40px; padding-top: 24px;
+      border-top: 1px solid var(--border-light);
+    }
+    .reader-sources h4 {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-tertiary); margin-bottom: 14px;
+    }
+    .source-link {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: var(--radius);
+      background: var(--surface-2); border: 1px solid var(--border-light);
+      margin-bottom: 6px; text-decoration: none; color: var(--text);
+      font-size: 13px; font-weight: 500;
+      transition: var(--transition);
+    }
+    .source-link:hover { border-color: var(--text); background: var(--surface); }
+    .source-link svg {
+      width: 12px; height: 12px; stroke: var(--text-tertiary);
+      stroke-width: 2; fill: none; flex-shrink: 0;
+    }
+
+    .reader-actions {
+      margin-top: 40px;
+      display: flex; gap: 10px; flex-wrap: wrap;
+      padding-top: 24px; border-top: 1px solid var(--border-light);
+    }
+    .reader-actions .btn { width: auto; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 20px; right: 20px;
+      padding: 12px 18px; background: var(--text); color: #fff;
+      border-radius: var(--radius); font-size: 13px; font-weight: 500;
+      z-index: 90;
+      transform: translateY(80px); opacity: 0;
+      transition: all 0.25s ease;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+      .hero-grid, .content-grid { grid-template-columns: 1fr; }
+      .auth-card { padding: 32px 24px; }
+      .reader-title { font-size: 24px; }
+      .reader-summary { font-size: 15px; }
+      .article-body { font-size: 14px; }
+    }
+  </style>
+<base target="_blank">
+</head>
+<body>
+  <div id="loading" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <span class="loading-text">Loading your study space...</span>
+  </div>
+
+  <!-- Auth -->
+  <div id="auth-view" class="auth-container">
+    <div class="auth-card">
+      <h1>Study Flow</h1>
+      <p class="subtitle">Create your profile and begin building a personalized learning path.</p>
+      <form id="account-form">
+        <div class="field-group">
+          <label for="name">Your name</label>
+          <input id="name" required placeholder="Asha Sharma" autocomplete="name" />
+        </div>
+        <div class="field-group">
+          <label for="username">Username</label>
+          <input id="username" required placeholder="asha" autocomplete="username" />
+        </div>
+        <div class="field-group">
+          <label for="interests">Interests</label>
+          <input id="interests" placeholder="Physics, Design, Programming..." />
+        </div>
+        <button class="btn" type="submit">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- App Dashboard -->
+  <div id="app-view" style="display: none;">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <!-- Profile Header -->
+        <div class="sidebar-profile">
+          <div class="sidebar-profile-left">
+            <div class="profile-avatar" id="profile-avatar">S</div>
+            <div class="profile-name-row">
+              <span class="profile-name-text" id="profile-name">student</span>
+              <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+          <div class="sidebar-profile-right">
+            <!-- Bell -->
+            <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <!-- Book -->
+            <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+        </div>
+
+        <!-- New Course -->
+        <div class="new-course-btn" onclick="addCourse()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Course
+        </div>
+
+        <!-- All Courses Section -->
+        <div class="sidebar-section" id="courses-toggle">
+          <span class="sidebar-section-title">All Courses</span>
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="course-list" id="course-list"></div>
+
+        <!-- Bottom -->
+        <div class="sidebar-bottom">
+          <svg viewBox="0 0 24 24" onclick="logout()"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="topbar">
+          <h2 class="page-title" id="page-title">Your Learning Space</h2>
+          <button class="btn btn-secondary btn-sm" onclick="refreshProfile()">Refresh</button>
+        </div>
+
+        <div class="hero-grid">
+          <div class="card">
+            <div class="card-label">Current Focus</div>
+            <div class="hero-course-title" id="hero-title">Choose a course</div>
+            <div class="hero-course-meta" id="hero-meta">Open a lesson to begin your journey.</div>
+            <div class="stats-grid">
+              <div class="stat-box">
+                <span class="stat-value" id="streak">0</span>
+                <span class="stat-label">Day Streak</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-value" id="course-count">0</span>
+                <span class="stat-label">Courses</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-value" id="module-count">0</span>
+                <span class="stat-label">Completed</span>
+              </div>
+            </div>
+            <div class="progress-container">
+              <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div></div>
+              <div class="progress-text" id="progress-text">0% complete</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-label">Suggested For You</div>
+            <div class="suggestion-list" id="suggestions"></div>
+          </div>
+        </div>
+
+        <div class="content-grid">
+          <div class="card">
+            <div class="card-label">Modules</div>
+            <div class="module-list" id="module-list"></div>
+          </div>
+          <div class="card lesson-preview">
+            <div class="card-label">Lesson Preview</div>
+            <div id="lesson-preview">
+              <div class="lesson-empty">
+                <svg class="empty-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                <p>Select a module to start reading.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Fullscreen Reader -->
+  <div id="reader" class="reader-overlay">
+    <div class="reader-toolbar">
+      <div class="reader-toolbar-inner">
+        <button class="reader-back" onclick="closeReader()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back
+        </button>
+        <div id="reader-module-number" style="font-size:12px;color:var(--text-tertiary);font-weight:500;"></div>
+      </div>
+      <div class="reader-progress-track">
+        <div class="reader-progress-fill" id="reader-progress" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="reader-body" id="reader-body"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const state = { user: null, selectedCourse: null, selectedModule: null };
+
+    // Color palette for course dots (subtle, matching the image style)
+    const DOT_COLORS = ['#3b82f6', '#9ca3af', '#f472b6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'];
+    function getDotColor(index) {
+      return DOT_COLORS[index % DOT_COLORS.length];
+    }
+
+    function setLoading(on, text = 'Loading your study space...') {
+      const el = document.getElementById('loading');
+      el.querySelector('.loading-text').textContent = text;
+      el.classList.toggle('hidden', !on);
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function getUserId() {
+      return localStorage.getItem('studyflow_user_id');
+    }
+
+    function logout() {
+      localStorage.removeItem('studyflow_user_id');
+      state.user = null;
+      state.selectedCourse = null;
+      state.selectedModule = null;
+      showAuth();
+      showToast('Logged out.');
+    }
+
+    async function createAccount(event) {
+      event.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const username = document.getElementById('username').value.trim();
+      const interests = document.getElementById('interests').value
+        .split(',').map(i => i.trim()).filter(Boolean);
+      if (!name || !username) return;
+
+      setLoading(true, 'Creating your account...');
+      try {
+        const res = await fetch('/api/account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, username, interests })
+        });
+        const data = await res.json();
+        localStorage.setItem('studyflow_user_id', data.user.user_id);
+        state.user = data.user;
+        state.user.suggested_courses = data.suggested_courses || [];
+        state.selectedCourse = data.user.courses[0] || null;
+        state.selectedModule = null;
+        showApp();
+        await refreshProfile();
+        showToast('Welcome to Study Flow, ' + name + '!');
+      } catch (err) {
+        showToast('Something went wrong. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function refreshProfile() {
+      const userId = getUserId();
+      if (!userId) return showAuth();
+      setLoading(true, 'Refreshing your profile...');
+      try {
+        const res = await fetch('/api/profile', { headers: { 'X-User-Id': userId } });
+        const data = await res.json();
+        state.user = data;
+        if (!state.selectedCourse && data.courses.length) {
+          state.selectedCourse = data.courses[0];
+        }
+        render();
+      } catch (err) {
+        showToast('Failed to refresh profile.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function showAuth() {
+      document.getElementById('auth-view').style.display = 'flex';
+      document.getElementById('app-view').style.display = 'none';
+    }
+
+    function showApp() {
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('app-view').style.display = 'block';
+    }
+
+    function render() {
+      if (!state.user) return;
+      const user = state.user;
+
+      // Profile
+      document.getElementById('profile-name').textContent = user.username;
+      document.getElementById('profile-avatar').textContent = (user.name || user.username).charAt(0).toUpperCase();
+
+      document.getElementById('streak').textContent = user.daily_streak || 0;
+      document.getElementById('course-count').textContent = (user.courses || []).length;
+      document.getElementById('module-count').textContent = (user.completed_modules || []).length;
+
+      const progressValues = Object.values(user.progress || {});
+      const average = progressValues.length
+        ? Math.round(progressValues.reduce((a, b) => a + b, 0) / progressValues.length)
+        : 0;
+      document.getElementById('progress-fill').style.width = average + '%';
+      document.getElementById('progress-text').textContent = average + '% overall progress';
+
+      renderCourses();
+      renderSuggestions();
+    }
+
+    function renderCourses() {
+      const user = state.user;
+      const courseList = document.getElementById('course-list');
+
+      if (!user.courses.length) {
+        courseList.innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text-secondary);">No courses yet.</div>';
+        document.getElementById('module-list').innerHTML = '<div style="padding:12px 0;font-size:12px;color:var(--text-secondary);">Add a course to see modules.</div>';
+        document.getElementById('lesson-preview').innerHTML = `
+          <div class="lesson-empty">
+            <svg class="empty-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <p>Add a course to start learning.</p>
+          </div>`;
+        document.getElementById('page-title').textContent = 'Your Learning Space';
+        document.getElementById('hero-title').textContent = 'Choose a course';
+        document.getElementById('hero-meta').textContent = 'Open a lesson to begin your journey.';
+        return;
+      }
+
+      courseList.innerHTML = user.courses.map((course, idx) => {
+        const isActive = state.selectedCourse && state.selectedCourse.course_title === course.course_title;
+        const dotColor = getDotColor(idx);
+        return `
+          <div class="course-item ${isActive ? 'active' : ''}" data-idx="${idx}">
+            <div class="course-name-row">
+              <span class="course-hash">#</span>
+              <span class="course-title-text">${escapeHtml(course.course_title)}</span>
+            </div>
+            <span class="course-dot" style="background:${dotColor};"></span>
+          </div>
+        `;
+      }).join('');
+
+      courseList.querySelectorAll('.course-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.idx);
+          selectCourse(user.courses[idx]);
+        });
+      });
+
+      if (!state.selectedCourse) state.selectedCourse = user.courses[0];
+      const course = user.courses.find(c => c.course_title === state.selectedCourse.course_title) || user.courses[0];
+      state.selectedCourse = course;
+
+      document.getElementById('page-title').textContent = course.course_title;
+      document.getElementById('hero-title').textContent = course.course_title;
+      document.getElementById('hero-meta').textContent = `${escapeHtml(course.target_audience)} · ${course.estimated_duration_hours} hours · ${escapeHtml(course.difficulty)}`;
+
+      renderModules(course);
+    }
+
+    function renderModules(course) {
+      const moduleList = document.getElementById('module-list');
+      const completedSet = new Set(state.user.completed_modules || []);
+
+      moduleList.innerHTML = (course.modules || []).map((module, idx) => {
+        const key = `${course.course_title}:${module.title}`;
+        const isCompleted = completedSet.has(key);
+        const isActive = state.selectedModule && state.selectedModule.title === module.title;
+        return `
+          <div class="module-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-idx="${idx}">
+            <div style="flex:1;">
+              <div class="module-header">
+                <span class="module-title">${escapeHtml(module.title)}</span>
+                <span class="module-status">${isCompleted ? 'Done' : (isActive ? 'Reading' : 'Open')}</span>
+              </div>
+              <div class="module-summary">${escapeHtml(module.summary)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      moduleList.querySelectorAll('.module-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const idx = parseInt(el.dataset.idx);
+          openReader(course.modules[idx]);
+        });
+      });
+
+      if (!state.selectedModule && course.modules.length) {
+        state.selectedModule = course.modules[0];
+      }
+      renderLessonPreview();
+    }
+
+    function renderLessonPreview() {
+      const preview = document.getElementById('lesson-preview');
+      const module = state.selectedModule;
+      if (!module) {
+        preview.innerHTML = `
+          <div class="lesson-empty">
+            <svg class="empty-icon" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <p>Select a module to start reading.</p>
+          </div>`;
+        return;
+      }
+      const lesson = module.lesson || {};
+      const points = lesson.points || module.concepts_covered || [];
+      preview.innerHTML = `
+        <div style="padding:4px 0;">
+          <h3 style="font-size:17px;font-weight:600;margin-bottom:6px;">${escapeHtml(module.title)}</h3>
+          <p style="color:var(--text-secondary);font-size:13px;line-height:1.6;margin-bottom:16px;">${escapeHtml(lesson.summary || module.summary)}</p>
+          <div style="background:var(--surface-2);border-radius:var(--radius);padding:14px;border:1px solid var(--border-light);">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-tertiary);margin-bottom:10px;">Key Points</div>
+            <ul style="list-style:none;margin:0;padding:0;">
+              ${points.slice(0,3).map(p => `<li style="padding:5px 0 5px 18px;position:relative;font-size:12px;color:var(--text-secondary);"><span style="position:absolute;left:0;color:var(--text);font-weight:600;">—</span>${escapeHtml(p)}</li>`).join('')}
+            </ul>
+          </div>
+          <button class="btn btn-sm" style="margin-top:14px;" onclick="openReader(state.selectedModule)">Read Full Article</button>
+        </div>
+      `;
+    }
+
+    function renderSuggestions() {
+      const suggestions = document.getElementById('suggestions');
+      const items = (state.user.suggested_courses || []).slice(0, 4);
+      if (!items.length) {
+        suggestions.innerHTML = '<div class="suggestion-empty">Add a few interests to get personalized recommendations.</div>';
+        return;
+      }
+      suggestions.innerHTML = items.map(item => `
+        <div class="suggestion-item" data-topic="${escapeHtml(item)}">
+          <span>${escapeHtml(item)}</span>
+          <span class="arrow">&rarr;</span>
+        </div>
+      `).join('');
+      suggestions.querySelectorAll('.suggestion-item').forEach(el => {
+        el.addEventListener('click', () => startSuggestedCourse(el.dataset.topic));
+      });
+    }
+
+    async function startSuggestedCourse(topic) {
+      const userId = getUserId();
+      if (!userId) return;
+      setLoading(true, 'Starting ' + topic + '...');
+      try {
+        const res = await fetch('/api/generate-course', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
+          body: JSON.stringify({ topic })
+        });
+        const data = await res.json();
+        if (data.status === 'exists') showToast('You already have this course.');
+        else showToast('Course started: ' + topic);
+        state.selectedCourse = data.course;
+        state.selectedModule = null;
+        await refreshProfile();
+      } catch (err) {
+        showToast('Failed to start course. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    /* ── FULLSCREEN READER ── */
+    function openReader(module) {
+      state.selectedModule = module;
+      const reader = document.getElementById('reader');
+      const body = document.getElementById('reader-body');
+      const course = state.selectedCourse;
+      const lesson = module.lesson || {};
+      const sources = lesson.sources || [];
+      const points = lesson.points || module.concepts_covered || [];
+      const content = lesson.content || '';
+
+      document.getElementById('reader-module-number').textContent =
+        course ? `Module ${module.module_number} of ${course.course_title}` : `Module ${module.module_number}`;
+
+      body.innerHTML = `
+        <div class="reader-course-label">${escapeHtml(course ? course.course_title : '')}</div>
+        <h1 class="reader-title">${escapeHtml(module.title)}</h1>
+        <p class="reader-summary">${escapeHtml(lesson.summary || module.summary)}</p>
+        ${content ? `<div class="article-body">${content}</div>` : ''}
+        <div class="reader-keypoints">
+          <h4>Key Takeaways</h4>
+          <ul>${points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+        </div>
+        ${sources.length ? `
+          <div class="reader-sources">
+            <h4>Continue learning from here</h4>
+            ${sources.map(s => `
+              <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="source-link">
+                <svg viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                ${escapeHtml(s.title)}
+              </a>
+            `).join('')}
+          </div>
+        ` : ''}
+        <div class="reader-actions">
+          <button class="btn btn-sm" onclick="markCompleteFromReader()">Mark Complete</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeReader()">Back to Dashboard</button>
+        </div>
+      `;
+
+      reader.classList.add('open');
+      document.body.style.overflow = 'hidden';
+
+      reader.onscroll = () => {
+        const scrollTop = reader.scrollTop;
+        const scrollHeight = reader.scrollHeight - reader.clientHeight;
+        const pct = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+        document.getElementById('reader-progress').style.width = pct + '%';
+      };
+
+      if (course) renderModules(course);
+    }
+
+    function closeReader() {
+      const reader = document.getElementById('reader');
+      reader.classList.remove('open');
+      document.body.style.overflow = '';
+      reader.onscroll = null;
+    }
+
+    async function markCompleteFromReader() {
+      if (!state.selectedCourse || !state.selectedModule) return;
+      const userId = getUserId();
+      setLoading(true, 'Saving your progress...');
+      try {
+        await fetch('/api/complete-module', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-User-Id': userId },
+          body: JSON.stringify({
+            course_title: state.selectedCourse.course_title,
+            module_title: state.selectedModule.title
+          })
+        });
+        await refreshProfile();
+        showToast('Module completed.');
+      } catch (err) {
+        showToast('Failed to save progress.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function selectCourse(course) {
+      state.selectedCourse = course;
+      state.selectedModule = null;
+      render();
+    }
+
+    async function addCourse() {
+      const topic = prompt('What would you like to learn?');
+      if (!topic || !topic.trim()) return;
+      await startSuggestedCourse(topic.trim());
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.getElementById('account-form').addEventListener('submit', createAccount);
+
+    const userId = getUserId();
+    if (userId) { showApp(); refreshProfile(); }
+    else { showAuth(); setLoading(false); }
+  </script>
+</body>
+</html>
